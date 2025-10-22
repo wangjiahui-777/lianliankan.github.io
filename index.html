@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中秋词图连连看</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            background: #f57c00;
+            transform: translateY(-2px);
+        }
+        
+        .game-board {
+            display: flex;
+            flex-wrap: nowrap;
+            justify-content: center;
+            gap: 40px;
+            width: 100%;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        /* 关键调整：左右容器固定宽度+统一内边距，确保对齐 */
+        .words-container, .images-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 320px; /* 固定宽度，左右一致 */
+            padding: 0 10px; /* 统一内边距，避免错位 */
+        }
+        
+        /* 关键调整：所有卡片统一固定宽高，去除min-height */
+        .card {
+            background: #ffcc80;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 100%; /* 占满容器宽度 */
+            height: 160px; /* 固定高度，左右卡片完全一致 */
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 左侧纯图片卡片样式：与右侧保持背景统一感 */
+        .word-card {
+            background: #ff9800;
+        }
+        
+        /* 关键调整：左右卡片内图片统一尺寸，避免变形 */
+        .word-card img, .image-card img {
+            max-width: 100%;
+            max-height: 110px; /* 统一图片最大高度，确保视觉一致 */
+            object-fit: contain;
+            border-radius: 5px;
+        }
+        
+        .image-card {
+            background: white;
+            color: #333;
+        }
+        
+        .card.selected {
+            box-shadow: 0 0 0 3px #ffeb3b, 0 0 20px #ffeb3b;
+            transform: scale(1.02); /* 轻微放大，避免过度变形 */
+        }
+        
+        .card.matched {
+            opacity: 0.7;
+            cursor: default;
+        }
+        
+        .card.matched::after {
+            content: "✓";
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 1.5rem;
+            color: #4caf50;
+        }
+        
+        .teacher-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            width: 100%;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .teacher-panel h2 {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        
+        .card-edit {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .card-edit-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .audio-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .success-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+        }
+        
+        .line {
+            position: absolute;
+            background: #ffeb3b;
+            height: 4px;
+            border-radius: 2px;
+            z-index: 0;
+            pointer-events: none;
+            box-shadow: 0 0 10px #ffeb3b;
+        }
+        
+        @media (max-width: 768px) {
+            .game-board {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            /* 移动端保持左右容器宽度一致 */
+            .words-container, .images-container {
+                width: 90%;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .card-edit {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .moon-decoration {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: #ffeb3b;
+            border-radius: 50%;
+            box-shadow: 0 0 20px #ffeb3b;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .instructions {
+            display: none;
+        }
+        
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .voice-test-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="moon-decoration"></div>
+    
+    <div class="header">
+        <h1>中秋词图连连看</h1>
+    </div>
+    
+    <div class="game-container">
+        <div class="game-info">
+            <div class="score">已匹配: <span id="matches">0</span>/<span id="totalPairs">3</span></div>
+        </div>
+        
+        <div class="game-board" id="gameBoard">
+            <!-- 左侧：纯图片上传区域（与右侧大小一致） -->
+            <div class="words-container" id="wordsContainer">
+                <!-- 左侧图片卡片通过JavaScript动态生成 -->
+            </div>
+            <!-- 右侧：原有图片区域（与左侧大小一致） -->
+            <div class="images-container" id="imagesContainer">
+                <!-- 右侧图片卡片通过JavaScript动态生成 -->
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="resetBtn">重新开始</button>
+            <button id="teacherBtn">教师设置</button>
+        </div>
+        
+        <div class="teacher-panel" id="teacherPanel" style="display: none;">
+            <h2>教师设置面板</h2>
+            
+            <div class="form-group">
+                <label for="bgMusic">背景音乐:</label>
+                <input type="file" id="bgMusic" accept="audio/*">
+            </div>
+            
+            <div class="form-group">
+                <label for="successSound">成功音效:</label>
+                <input type="file" id="successSound" accept="audio/*">
+            </div>
+            
+            <div class="audio-controls">
+                <button id="playBgMusic">播放背景音乐</button>
+                <button id="stopBgMusic">停止背景音乐</button>
+                <button id="testSuccessSound">测试成功音效</button>
+            </div>
+            
+            <h3>编辑卡片内容（左侧为纯图片上传）</h3>
+            <div class="card-edit" id="cardEdit">
+                <!-- 卡片编辑区域通过JavaScript动态生成 -->
+            </div>
+            
+            <h3>编辑匹配语音（匹配成功时播放“匹配成功+对应词语”）</h3>
+            <div class="voice-controls" id="voiceControls">
+                <!-- 语音编辑区域通过JavaScript动态生成 -->
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="saveChanges">保存更改</button>
+                <button id="closePanel">关闭面板</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="success-message" id="successMessage">
+        <h2>恭喜！你完成了所有配对！</h2>
+        <button id="playAgain">再玩一次</button>
+    </div>
+    <script>
+        // 游戏数据：保留leftImage和matchText，用于纯图片与语音提示
+        let gameData = {
+            cards: [
+                { id: 1, leftImage: null, image: "中秋节.jpg", voice: null, matchText: "中秋节" },
+                { id: 2, leftImage: null, image: "月饼.jpg", voice: null, matchText: "月饼" },
+                { id: 3, leftImage: null, image: "月亮.jpg", voice: null, matchText: "月亮" }
+            ],
+            bgMusic: null,
+            successSound: null
+        };
+        // 游戏状态（保持不变）
+        let gameState = {
+            selectedWord: null,
+            matchedPairs: 0,
+            totalPairs: 3,
+            lines: []
+        };
+        // DOM元素（保持不变）
+        const wordsContainer = document.getElementById('wordsContainer');
+        const imagesContainer = document.getElementById('imagesContainer');
+        const matchesElement = document.getElementById('matches');
+        const totalPairsElement = document.getElementById('totalPairs');
+        const resetBtn = document.getElementById('resetBtn');
+        const teacherBtn = document.getElementById('teacherBtn');
+        const teacherPanel = document.getElementById('teacherPanel');
+        const saveChangesBtn = document.getElementById('saveChanges');
+        const closePanelBtn = document.getElementById('closePanel');
+        const playBgMusicBtn = document.getElementById('playBgMusic');
+        const stopBgMusicBtn = document.getElementById('stopBgMusic');
+        const testSuccessSoundBtn = document.getElementById('testSuccessSound');
+        const successMessage = document.getElementById('successMessage');
+        const playAgainBtn = document.getElementById('playAgain');
+        const cardEdit = document.getElementById('cardEdit');
+        const voiceControls = document.getElementById('voiceControls');
+        // 音频元素（保持不变）
+        const bgAudio = new Audio();
+        const successAudio = new Audio();
+        const voiceAudios = {};
+        // 初始化游戏：左右卡片大小一致，左侧纯图片
+        function initGame() {
+            wordsContainer.innerHTML = '';
+            imagesContainer.innerHTML = '';
+            gameState.selectedWord = null;
+            gameState.matchedPairs = 0;
+            gameState.lines = [];
+            
+            matchesElement.textContent = gameState.matchedPairs;
+            totalPairsElement.textContent = gameState.totalPairs;
+            
+            // 创建左侧纯图片卡片（与右侧尺寸一致）
+            gameData.cards.forEach(card => {
+                const leftCard = document.createElement('div');
+                leftCard.className = 'card word-card';
+                leftCard.dataset.id = card.id;
+                
+                // 图片显示：未上传时用默认图，上传后替换
+                const img = document.createElement('img');
+                img.src = card.leftImage || "default-upload.png"; // 建议准备默认上传提示图
+                img.alt = `左侧${card.matchText}图`;
+                leftCard.appendChild(img);
+                
+                // 点击选择逻辑（无文字，仅图片交互）
+                leftCard.addEventListener('click', () => selectLeft(card.id, leftCard));
+                wordsContainer.appendChild(leftCard);
+            });
+            
+            // 创建右侧图片卡片（与左侧尺寸一致，随机顺序）
+            const shuffledCards = [...gameData.cards].sort(() => Math.random() - 0.5);
+            shuffledCards.forEach(card => {
+                const imageCard = document.createElement('div');
+                imageCard.className = 'card image-card';
+                imageCard.dataset.id = card.id;
+                
+                const img = document.createElement('img');
+                img.src = card.image;
+                img.alt = `右侧${card.matchText}图`;
+                imageCard.appendChild(img);
+                
+                // 点击选择逻辑
+                imageCard.addEventListener('click', () => selectRight(card.id, imageCard));
+                imagesContainer.appendChild(imageCard);
+            });
+        }
+        // 选择左侧图片卡片（逻辑不变）
+        function selectLeft(id, element) {
+            if (element.classList.contains('matched')) return;
+            document.querySelectorAll('.word-card.selected').forEach(card => card.classList.remove('selected'));
+            element.classList.add('selected');
+            gameState.selectedWord = { id, element };
+        }
+        // 选择右侧图片卡片：优化语音提示文本
+        function selectRight(id, element) {
+            if (element.classList.contains('matched')) return;
+            if (!gameState.selectedWord) return;
+            
+            if (gameState.selectedWord.id === id) {
+                // 匹配成功：更新状态
+                gameState.selectedWord.element.classList.add('matched');
+                element.classList.add('matched');
+                gameState.matchedPairs++;
+                matchesElement.textContent = gameState.matchedPairs;
+                
+                // 绘制连线（保持原有逻辑，因卡片尺寸统一，连线位置更精准）
+                drawLine(gameState.selectedWord.element, element);
+                
+                // 播放成功音效
+                if (gameData.successSound) {
+                    successAudio.src = gameData.successSound;
+                    successAudio.play();
+                }
+                
+                // 核心优化：播放“匹配成功+对应词语”语音
+                playMatchSuccessVoice(id);
+                
+                // 清除选择
+                gameState.selectedWord.element.classList.remove('selected');
+                gameState.selectedWord = null;
+                
+                // 检查游戏结束
+                if (gameState.matchedPairs === gameState.totalPairs) {
+                    setTimeout(showSuccessMessage, 500);
+                }
+            } else {
+                // 不匹配：清除选择
+                gameState.selectedWord.element.classList.remove('selected');
+                gameState.selectedWord = null;
+            }
+        }
+        // 核心优化：语音提示固定为“匹配成功！+对应词语”
+        function playMatchSuccessVoice(cardId) {
+            const card = gameData.cards.find(c => c.id === cardId);
+            if (card && card.voice) {
+                // 若有自定义语音，直接播放（建议录制“匹配成功！XX”格式）
+                const audio = new Audio(card.voice);
+                audio.play();
+            } else {
+                // 无自定义语音时，强制合成“匹配成功！+对应词语”
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(`匹配成功！${card.matchText}`);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.9; // 语速适中，清晰可辨
+                    utterance.pitch = 1.1; // 音调稍高，更显活泼
+                    speechSynthesis.speak(utterance);
+                }
+            }
+        }
+        // 绘制连线：因卡片尺寸统一，计算更精准（逻辑不变）
+        function drawLine(leftElement, rightElement) {
+            const gameBoard = document.querySelector('.game-board');
+            const leftRect = leftElement.getBoundingClientRect();
+            const rightRect = rightElement.getBoundingClientRect();
+            const boardRect = gameBoard.getBoundingClientRect();
+            
+            // 起点：左侧卡片右侧中间，终点：右侧卡片左侧中间
+            const startX = leftRect.right - boardRect.left;
+            const startY = leftRect.top + leftRect.height / 2 - boardRect.top;
+            const endX = rightRect.left - boardRect.left;
+            const endY = rightRect.top + rightRect.height / 2 - boardRect.top;
+            
+            // 计算连线长度与角度
+            const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+            
+            // 创建连线元素
+            const line = document.createElement('div');
+            line.className = 'line';
+            line.style.width = `${length}px`;
+            line.style.left = `${startX}px`;
+            line.style.top = `${startY}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+            line.style.transformOrigin = '0 0';
+            
+            gameBoard.appendChild(line);
+            gameState.lines.push(line);
+        }
+        // 显示成功消息（保持不变）
+        function showSuccessMessage() {
+            successMessage.style.display = 'block';
+        }
+        // 初始化教师面板：提示语音格式，保持其他逻辑
+        function initTeacherPanel() {
+            cardEdit.innerHTML = '';
+            voiceControls.innerHTML = '';
+            
+            gameData.cards.forEach((card, index) => {
+                const cardEditItem = document.createElement('div');
+                cardEditItem.className = 'card-edit-item';
+                
+                // 卡片编辑：左侧纯图片，右侧匹配图，提示文本
+                cardEditItem.innerHTML = `
+                    <h4>卡片 ${index + 1}（匹配文本：${card.matchText}）</h4>
+                    <div class="form-group">
+                        <label>左侧图片URL（与右侧卡片等大）:</label>
+                        <input type="text" class="card-left-image" value="${card.leftImage || ''}" data-index="${index}" placeholder="建议图片尺寸与右侧一致">
+                    </div>
+                    <div class="form-group">
+                        <label>或上传左侧图片:</label>
+                        <input type="file" class="card-left-image-upload" data-index="${index}" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>右侧匹配图片URL:</label>
+                        <input type="text" class="card-image" value="${card.image}" data-index="${index}">
+                    </div>
+                    <div class="form-group">
+                        <label>或上传右侧匹配图片:</label>
+                        <input type="file" class="card-image-upload" data-index="${index}" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>匹配提示文本（语音将播报“匹配成功！+此文本”）:</label>
+                        <input type="text" class="card-match-text" value="${card.matchText}" data-index="${index}" required>
+                    </div>
+                `;
+                
+                cardEdit.appendChild(cardEditItem);
+                
+                // 语音编辑：提示录制格式
+                const voiceTestItem = document.createElement('div');
+                voiceTestItem.className = 'voice-test-item';
+                voiceTestItem.innerHTML = `
+                    <span>${card.matchText} 匹配语音（建议格式：匹配成功！${card.matchText}）:</span>
+                    <input type="file" class="card-voice" data-index="${index}" accept="audio/*">
+                    <button class="test-voice" data-index="${index}">测试语音</button>
+                `;
+                voiceControls.appendChild(voiceTestItem);
+            });
+        }
+        // 事件监听器（保持原有逻辑，确保流畅运行）
+        resetBtn.addEventListener('click', () => {
+            gameState.lines.forEach(line => line.remove());
+            gameState.lines = [];
+            initGame();
+        });
+        
+        teacherBtn.addEventListener('click', () => {
+            teacherPanel.style.display = 'block';
+            initTeacherPanel();
+        });
+        
+        closePanelBtn.addEventListener('click', () => {
+            teacherPanel.style.display = 'none';
+        });
+        
+        saveChangesBtn.addEventListener('click', () => {
+            // 保存左侧图片
+            document.querySelectorAll('.card-left-image').forEach(input => {
+                const index = input.dataset.index;
+                gameData.cards[index].leftImage = input.value.trim() || null;
+            });
+            
+            // 保存右侧图片
+            document.querySelectorAll('.card-image').forEach(input => {
+                const index = input.dataset.index;
+                gameData.cards[index].image = input.value;
+            });
+            
+            // 保存匹配提示文本（确保语音播报正确）
+            document.querySelectorAll('.card-match-text').forEach(input => {
+                const index = input.dataset.index;
+                gameData.cards[index].matchText = input.value.trim() || `卡片${index + 1}`;
+            });
+            
+            // 更新游戏
+            gameState.totalPairs = gameData.cards.length;
+            totalPairsElement.textContent = gameState.totalPairs;
+            gameState.lines.forEach(line => line.remove());
+            gameState.lines = [];
+            initGame();
+            teacherPanel.style.display = 'none';
+        });
+        
+        playAgainBtn.addEventListener('click', () => {
+            successMessage.style.display = 'none';
+            gameState.lines.forEach(line => line.remove());
+            gameState.lines = [];
+            initGame();
+        });
+        
+        // 音频控制（保持不变）
+        playBgMusicBtn.addEventListener('click', () => {
+            if (gameData.bgMusic) {
+                bgAudio.src = gameData.bgMusic;
+                bgAudio.loop = true;
+                bgAudio.play();
+            } else {
+                alert('请先选择背景音乐文件');
+            }
+        });
+        
+        stopBgMusicBtn.addEventListener('click', () => {
+            bgAudio.pause();
+        });
+        
+        testSuccessSoundBtn.addEventListener('click', () => {
+            if (gameData.successSound) {
+                successAudio.src = gameData.successSound;
+                successAudio.play();
+            } else {
+                alert('请先选择成功音效文件');
+            }
+        });
+        
+        // 背景音乐与成功音效上传（保持不变）
+        document.getElementById('bgMusic').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) gameData.bgMusic = URL.createObjectURL(file);
+        });
+        
+        document.getElementById('successSound').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) gameData.successSound = URL.createObjectURL(file);
+        });
+        
+        // 右侧图片上传（保持不变）
+        document.addEventListener('change', e => {
+            if (e.target.classList.contains('card-image-upload')) {
+                const file = e.target.files[0];
+                const index = e.target.dataset.index;
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    gameData.cards[index].image = url;
+                    document.querySelector(`.card-image[data-index="${index}"]`).value = url;
+                }
+            }
+        });
+        
+        // 左侧图片上传（保持不变，确保与右侧尺寸一致）
+        document.addEventListener('change', e => {
+            if (e.target.classList.contains('card-left-image-upload')) {
+                const file = e.target.files[0];
+                const index = e.target.dataset.index;
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    gameData.cards[index].leftImage = url;
+                    document.querySelector(`.card-left-image[data-index="${index}"]`).value = url;
+                }
+            }
+        });
+        
+        // 语音上传与测试：确保测试时也是“匹配成功+词语”
+        document.addEventListener('change', e => {
+            if (e.target.classList.contains('card-voice')) {
+                const file = e.target.files[0];
+                const index = e.target.dataset.index;
+                if (file) gameData.cards[index].voice = URL.createObjectURL(file);
+            }
+        });
+        
+        document.addEventListener('click', e => {
+            if (e.target.classList.contains('test-voice')) {
+                const index = e.target.dataset.index;
+                const card = gameData.cards[index];
+                if (card.voice) {
+                    new Audio(card.voice).play();
+                } else if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(`匹配成功！${card.matchText}`);
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 0.9;
+                    speechSynthesis.speak(utterance);
+                } else {
+                    alert('您的浏览器不支持语音合成功能，请上传自定义语音文件');
+                }
+            }
+        });
+        
+        // 初始化游戏
+        initGame();
+    </script>
+</body>
+</html>
